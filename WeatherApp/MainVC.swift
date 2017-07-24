@@ -8,6 +8,7 @@
 
 import UIKit
 import Alamofire
+import SDWebImage
 
 class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
 
@@ -19,6 +20,10 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
     @IBOutlet weak var tableView: UITableView!
     
     let days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    
+    let months = ["Jan", "Feb", "March", "April", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec" ]
+    
+    let imageUrl = "http://openweathermap.org/img/w/"
     
     let url = "http://api.openweathermap.org/data/2.5/weather?q=Mumbai&APPID=43a80028cf7fc1b34a515f437a0788b8"
     
@@ -33,6 +38,7 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
         
         getCurrentWeather()
         
+        
     }
 
     
@@ -40,31 +46,40 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
     func getCurrentWeather(){
         Alamofire.request(url).responseJSON(completionHandler: {
             response in
-            
             do{
                 if let data = response.data{
+                    
+                    var today: String = ""
+                    var weatherType: String = ""
+                    var currTemp: Double = 0.0
+                    var location: String = ""
+                    var icon: String = ""
+                    
                     let readableJson = try JSONSerialization.jsonObject(with: data, options: .mutableContainers) as? [String: AnyObject]
                     
-//                    let coord = readableJson!["coord"] as? [String: Any]
-//                    let lon = coord?["lon"] as? Double
-//                    print("Longitude is \(lon) ")
                     let items = readableJson?["weather"]
                     
                     if let weat = items?[0] as? [String: Any] {
-                        let weat_short = weat["main"] as? String
+                        weatherType = (weat["main"] as? String)!
                         let weat_long = weat["description"] as? String
-                        print("\(weat_short) long \(weat_long)")
+                        icon = (weat["icon"] as? String)!
                     }
                     
                     if let main = readableJson!["main"] as? [String: Any] {
-                        let temp = main["temp"] as? Double
+                        currTemp = (main["temp"] as? Double)!
                         let humidity = main["humidity"] as? Double
                         let pressure = main["pressure"] as? Double
-                        print("\(temp) humidity \(humidity) pressure \(pressure) ")
+                        
                     }
+                    let da = readableJson?["dt"] as? Double
+                    let date = NSDate(timeIntervalSince1970: da!)
+                    let weather = Weather(weatherType: weatherType, tempCel: currTemp, tempFeh: currTemp, day: (date as? Date)!, icon: icon)
+                    self.updateBanner(weather: weather)
+                    
                     }else{
                         print("Data not found")
                 }
+            
             }catch {
                 print(error)
             }
@@ -87,10 +102,12 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
                         var weat_short: String = ""
                         var weat_long: String = ""
                         var tempFeh: Double = 0.0
+                        var icon: String = ""
 
                         if let weat = weatherdatas?[0] as? [String: Any] {
                             weat_short = (weat["main"] as? String)!
                             weat_long = (weat["description"] as? String)!
+                            icon = (weat["icon"] as? String)!
                             print("\(weat_short) long \(weat_long)")
                         }
                         
@@ -102,41 +119,14 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
                         //date dt_txt
                         let da = data["dt"] as? Double
                         let date = NSDate(timeIntervalSince1970: da!)
-                        //let date = ddate.description
                         
                         print("Date \(date) weather is \(weat_short) temp is \(tempFeh)")
-                        let weather = Weather(weatherType: weat_short, tempCel: tempFeh, tempFeh: tempFeh, day: date as Date)
+                        let weather = Weather(weatherType: weat_short, tempCel: tempFeh, tempFeh: tempFeh, day: date as Date, icon: icon)
                         self.weatherDataToDisplay.append(weather)
                         
                     }
                     self.reloadData()
                     
-                    
-                    
-                    
-//                    if let items = readableJson?["list"]{
-//                        
-//                        for item  in items{
-//                            
-//                            if let it = item as? [String: Any]{
-//                                //get weather
-//                                let weatherdata = it["weather"]
-//                                var weat_short: String = ""
-//                                var weat_long: String = ""
-//                                
-//                                if let weat = weatherdata?[0] as? [String: Any] {
-//                                    weat_short = (weat["main"] as? String)!
-//                                    weat_long = (weat["description"] as? String)!
-//                                    print("\(weat_short) long \(weat_long)")
-//                                }
-//                                
-//                                //date dt_txt
-//                                let date = it["date"] as? String
-//                                print("Date \(date) weather is \(weat_short)")
-//
-//                            }
-//                        }
-                    //}
                 }
             }
             catch{
@@ -146,7 +136,22 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
         
     }
     
-    func reloadData(){
+    private func updateBanner(weather: Weather){
+        let date = weather.day
+        let calendar = Calendar.current
+        let year = calendar.component(.year, from: date)
+        let month = calendar.component(.month, from: date)
+        let day = calendar.component(.day, from: date)
+        
+        CurrentDateLabel.text = "Today, \(day) \(months[month-1]) \(year)"
+        let imgUrl = "\(imageUrl)\(weather.icon).png"
+        bannerImage.sd_setImage(with: URL(string: imgUrl))
+        CurrentTemp.text = String(format : "%.2f °F", weather.tempFeh * 9/5 - 459.67)
+        //tempCel.text = String(format : "%.2f °C", weather.tempFeh - 273)
+        BannerWeatherName.text = weather.weatherType
+    }
+    
+    private func reloadData(){
         tableView.reloadData()
     }
     
@@ -156,40 +161,12 @@ class MainVC: UIViewController, UITableViewDataSource, UITableViewDelegate {
         return weatherDataToDisplay.count
     }
     
-    func getDayOfWeek(_ today:String) -> Int? {
-        let formatter  = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        guard let todayDate = formatter.date(from: today) else { return nil }
-        let myCalendar = Calendar(identifier: .gregorian)
-        let weekDay = myCalendar.component(.weekday, from: todayDate)
-        return weekDay
-    }
+   
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as? WeatherCell {
             
-            
-            if weatherDataToDisplay.count > 0 {
-                
-                let currdate = weatherDataToDisplay[indexPath.row].day
-                let makeformat = currdate.description
-                let index = makeformat.index(makeformat.startIndex, offsetBy: 10)
-                let finalformat = makeformat.substring(to: index)
-                if let weekday = getDayOfWeek(finalformat){
-                    cell.day.text = days[weekday-1]
-                }else{
-                    print("Bad input")
-                }
-                
-                //cell.day.text = weatherDataToDisplay[indexPath.row].day
-                cell.tempFeh.text = String(format : "%.2f °F", weatherDataToDisplay[indexPath.row].tempFeh * 9/5 - 459.67)
-                cell.tempCel.text = String(format : "%.2f °C", weatherDataToDisplay[indexPath.row].tempFeh - 273)
-                cell.weather.text = weatherDataToDisplay[indexPath.row].weatherType
-                
-                cell.ThumbImage.image = UIImage(named: "cloudy.png")
-            }
-            
-            //cell.day.text = weatherDataToDisplay?[indexPath.row].day
+            cell.updateCell(weather: weatherDataToDisplay[indexPath.row])
             return cell
         }
         
