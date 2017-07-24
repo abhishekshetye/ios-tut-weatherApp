@@ -10,12 +10,12 @@ import Foundation
 
 class Weather {
     
-    var weatherType: String
-    var tempCel: Double
-    var tempFeh: Double
-    var day: String
+    var weatherType: String = ""
+    var tempCel: Double = 0.0
+    var tempFeh: Double = 0.0
+    var day: Date
     
-    init(weatherType: String, tempCel: Double, tempFeh: Double, day: String){
+    init(weatherType: String, tempCel: Double, tempFeh: Double, day: Date){
         self.weatherType = weatherType
         self.tempCel = tempCel
         self.tempFeh = tempFeh
